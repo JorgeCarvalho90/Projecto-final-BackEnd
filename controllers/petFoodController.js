@@ -1,6 +1,5 @@
 const db = require('../config/firebaseConfig')
 const Joi = require("joi")
-const jwt = require('jsonwebtoken')
 
 async function addPetFood(req,res) {
     try{
@@ -13,13 +12,13 @@ async function addPetFood(req,res) {
             return res.status(400).json(validationJoi.error)
         }
 
-        const validation2 = checkIfPetFoodNameAlreadyExists(req.body.name)
+        const validation2 = await checkIfPetFoodNameAlreadyExists(req.body.name)
         if(validation2){
             return res.status(400).send("Product with the same name already added")
         }
 
-        await db.collection("petFood").add(req.body)
-        return res.status(201).json("New food added");
+        await db.collection("petfood").add(req.body)
+        return res.status(201).json("New food added")
 
     }catch(error){
         return res.status(400).json("Something went wrong, try again later");
@@ -27,11 +26,11 @@ async function addPetFood(req,res) {
 }
 
 async function getAllPetFoods(req,res) {
-    const getAllFoods = await db.collection("petFood").get()
+    const getAllFoods = await db.collection("petfood").get()
     const showAllFoods = getAllFoods.docs.map((doc)=>{
         return {id: doc.id, ...doc.data()}
     })
-    return res.json(showAllFoods)
+    return res.status(200).json(showAllFoods)
 }
 
 async function updatePetFood(req, res) {
@@ -53,8 +52,23 @@ async function updatePetFood(req, res) {
         return res.json(`Pet food with ID ${id} updated`)
     }catch(error){
         return res.status(400).json("Pet food not found")
-    }    
+    }
 }
+
+async function deletePetFood(req, res) {
+    try{
+        if (req.userRole !== "admin"){
+            return res.status(403).json("Only admins can delete food")
+        }
+        const { id } = req.params
+        await db.collection("petfood").doc(id).delete()
+        return res.json(`Pet food with ID ${id} deleted`)
+    } catch(error){
+        return res.status(400).json("Something went wrong, try again later");
+    }
+}
+//--------------------------------------------------------------------
+
 
 
 function addPetFoodValidation(values){
@@ -94,15 +108,18 @@ function updatePetFoodValidation(values){
     }
 }
 async function checkIfPetFoodNameAlreadyExists(name) {
-    const checkIfPetFoodNameAlreadyExists = await db.collection("petFood").where("name", "==", name).get()
+    const checkIfPetFoodNameAlreadyExists = await db.collection("petfood").where("name", "==", name).get()
     if(checkIfPetFoodNameAlreadyExists.docs[0]){
         return true
     }else{
         return false
     }
-  }
+}
+
+
 module.exports = {
     addPetFood,
     getAllPetFoods,
-    updatePetFood
+    updatePetFood,
+    deletePetFood
 }
