@@ -12,7 +12,8 @@ const decodeUserId = (req, res, next) => {
       return res.status(403).json({ message: 'Invalid or expired token' });
     }
     req.userId = decoded.userId;
-
+    req.userRole = decoded.userRole;
+    
     next();
   });
 };
