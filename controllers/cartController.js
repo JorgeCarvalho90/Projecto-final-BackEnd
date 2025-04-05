@@ -3,6 +3,11 @@ const Joi = require("joi")
 
 async function addCart(req,res) {
     try{
+        const getCart = await db.collection("cart").where("id_user", "==", req.userId).get()
+        const showcart = getCart.docs.map((doc) => doc.id)
+        if (showcart.length > 0){
+            return res.status(400).json(`You already have a cart ongoing, please change it. ID: ${JSON.stringify(showcart)}`)
+        }
         const validationJoi = addCartValidation(req.body)
         if (validationJoi.error) {
             return res.status(400).json(validationJoi.error)
@@ -34,7 +39,7 @@ async function updateCart(req, res) {
     try{
         const { id } = req.params
 
-        const doesItBelong = await checkIfCartBelongs(req.userId, req.userRole, id)
+        const doesItBelong = await checkIfCartBelongs(req.userId, id)
         if (!doesItBelong){
             return res.status(403).json("Unauthorized")
         }
@@ -45,8 +50,11 @@ async function updateCart(req, res) {
         if (validationJoi.error) {
             return res.status(400).json(validationJoi.error)
         }
-
-        await db.collection("cart").doc(id).update(req.body)
+        const updatedCart = {
+            ...req.body,
+            lastUpdated : new Date().toISOString()
+        }
+        await db.collection("cart").doc(id).update(updatedCart)
 
         return res.json(`Cart with ID ${id} updated`)
 
@@ -58,7 +66,7 @@ async function deleteCart(req, res) {
     try{
         const { id } = req.params
 
-        const doesItBelong = await checkIfCartBelongs(req.userId, req.userRole, id)
+        const doesItBelong = await checkIfCartBelongs(req.userId, id)
 
         if (!doesItBelong){
             return res.status(403).json("Unauthorized")
@@ -109,7 +117,7 @@ function updateCartValidation(values){
     }
 }
 
-async function checkIfCartBelongs(id_user, role_user, id_data){
+async function checkIfCartBelongs(id_user, id_data){
     try{
         const get = await db.collection("cart").doc(id_data).get()
         const data = get.data()
@@ -122,7 +130,8 @@ async function checkIfCartBelongs(id_user, role_user, id_data){
       } catch(error){
         return "Cart not found"
       }
-    }
+ }
+
 module.exports = {
     addCart,
     getCart,
