@@ -6,12 +6,31 @@ async function addCart(req,res) {
         const getCart = await db.collection("cart").where("id_user", "==", req.userId).get()
         const showcart = getCart.docs.map((doc) => doc.id)
         if (showcart.length > 0){
-            return res.status(400).json(`You already have a cart ongoing, please change it. ID: ${JSON.stringify(showcart)}`)
+            return res.status(400).json(`You already have a cart ongoing, please update it. ID: ${JSON.stringify(showcart)}`)
         }
+
+        if (req.body === undefined){
+            return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
+        }
+
         const validationJoi = addCartValidation(req.body)
         if (validationJoi.error) {
             return res.status(400).json(validationJoi.error)
         }
+
+        for (const item of req.body.petFood){
+            const getPetFood = await db.collection("petfood").doc(item.petFoodId).get()
+
+            if(!getPetFood.exists){
+                return res.status(404).json(`Pet food with ID ${item.petFoodId} not found`)
+            }
+
+            const getPetFoodData = getPetFood.data()
+            if(item.quantity > getPetFoodData.stock){
+                return res.status(400).json(`Insufficient stock for ${item.petFoodId}. Only ${getPetFoodData.stock} available`)
+            }
+        }
+
         const newCart ={
             id_user: req.userId,
             ...req.body
@@ -44,12 +63,28 @@ async function updateCart(req, res) {
             return res.status(403).json("Unauthorized")
         }
 
-
+        if (req.body === undefined){
+            return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
+        }
+        
         const validationJoi = updateCartValidation(req.body)
-
         if (validationJoi.error) {
             return res.status(400).json(validationJoi.error)
         }
+
+        for (const item of req.body.petFood){
+            const getPetFood = await db.collection("petfood").doc(item.petFoodId).get()
+
+            if(!getPetFood.exists){
+                return res.status(404).json(`Pet food with ID ${item.petFoodId} not found`)
+            }
+
+            const getPetFoodData = getPetFood.data()
+            if(item.quantity > getPetFoodData.stock){
+                return res.status(400).json(`Insufficient stock for ${item.petFoodId}. Only ${getPetFoodData.stock} available`)
+            }
+        }
+    
         const updatedCart = {
             ...req.body,
             lastUpdated : new Date().toISOString()
@@ -79,7 +114,6 @@ async function deleteCart(req, res) {
     }
 }
 //------------------------------------------
-
 
 function addCartValidation(values){
     const userSchema = Joi.object({

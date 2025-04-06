@@ -4,6 +4,9 @@ const jwt = require('jsonwebtoken')
 
 async function createUser(req,res) {
     try{
+        if (req.body === undefined){
+          return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
+        }
         const validationJoi = createUserValidation(req.body)
 
         if (validationJoi.error) {
@@ -19,11 +22,25 @@ async function createUser(req,res) {
         const { email, password, fullName, role} = req.body
 
         if (role){
-            const newUser = {email: email, password: password, fullName: fullName, role: role, createdAt: new Date().toISOString()}
+            const newUser = {
+              email: email, 
+              password: password, 
+              fullName: fullName, 
+              role: role, 
+              createdAt: new Date().toISOString()
+            }
+
             await db.collection("users").add(newUser)
             return res.status(201).send(`User ${fullName} created as ${role}`)
         } else{
-            const newUser = {email: email, password: password, fullName: fullName, role: "user", createdAt: new Date().toISOString()}
+            const newUser = {
+              email: email, 
+              password: password, 
+              fullName: fullName, 
+              role: "user", 
+              createdAt: new Date().toISOString()
+            }
+
             await db.collection("users").add(newUser)
             return res.status(201).send(`User ${fullName} created as user`)
         }

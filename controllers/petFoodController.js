@@ -7,6 +7,10 @@ async function addPetFood(req,res) {
             return res.status(403).json("Only admins can add new food")
         }
 
+        if (req.body === undefined){
+            return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
+        }
+
         const validationJoi = addPetFoodValidation(req.body)
         if (validationJoi.error) {
             return res.status(400).json(validationJoi.error)
@@ -14,7 +18,7 @@ async function addPetFood(req,res) {
 
         const validation2 = await checkIfPetFoodNameAlreadyExists(req.body.name)
         if(validation2){
-            return res.status(400).send("Product with the same name already added")
+            return res.status(400).send("Pet Food with the same name already added")
         }
 
         await db.collection("petfood").add(req.body)
@@ -37,6 +41,10 @@ async function updatePetFood(req, res) {
     try{
         if (req.userRole !== "admin"){
             return res.status(403).json("Only admins can add new food")
+        }
+
+        if (req.body === undefined){
+            return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
 
         const validationJoi = updatePetFoodValidation(req.body)
@@ -67,9 +75,7 @@ async function deletePetFood(req, res) {
         return res.status(400).json("Something went wrong, try again later");
     }
 }
-//--------------------------------------------------------------------
-
-
+//----------
 
 function addPetFoodValidation(values){
     const userSchema = Joi.object({
@@ -88,7 +94,6 @@ function addPetFoodValidation(values){
         return { error: false}
     }
 }
-
 
 function updatePetFoodValidation(values){
     const userSchema = Joi.object({
@@ -115,7 +120,6 @@ async function checkIfPetFoodNameAlreadyExists(name) {
         return false
     }
 }
-
 
 module.exports = {
     addPetFood,

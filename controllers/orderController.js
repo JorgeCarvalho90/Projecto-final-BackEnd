@@ -15,27 +15,58 @@ async function getOrder(req,res) {
 
 async function addOrder(req,res) {
     try{
-        const validationJoi = addOrderValidation(req.body) //nao esta a entrar esta validacao, perguntar
+        const validationJoi = addOrderValidation(req.body)
         if (validationJoi.error) {
             return res.status(400).json(validationJoi.error)
         }
+
         const getCart = await db.collection("cart").where("id_user", "==", req.userId).get()
         if (getCart.empty){
             return res.status(404).json("No cart found for your user")
         }
 
+        if (req.body === undefined){
+            return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
+        }
+
         const getCartDoc = getCart.docs[0]
         const getCartData = getCartDoc.data()
+        const petFoodItems = getCartData.petFood
 
+        let totalPrice = 0
+        const updatedStocks = []
+
+        for (const item of petFoodItems){
+            const petFood = db.collection("petfood").doc(item.petFoodId)
+            const getPetFood = await petFood.get()
+
+            const getPetFoodData = getPetFood.data()
+
+            if (getPetFoodData.stock < item.quantity) {
+                return res.status(400).json(`Not enough stock for ${getPetFoodData.name}. Please cancel this order and make a new one`)
+            }
+
+            totalPrice += item.quantity * getPetFoodData.price
+            console.log (totalPrice)
+
+            updatedStocks.push({
+                petFood,
+                newStock: getPetFoodData.stock - item.quantity
+            })
+
+            for (const item of updatedStocks) {
+                await item.petFood.update({ stock: item.newStock })
+            }
+
+        }
         const neworder ={
             id_user: req.userId,
             petFood: getCartData.petFood,
             shippingAddress: req.body.shippingAddress,
             status: "placed",
             timestamp: new Date().toISOString(),
-            totalPrice: 0 //to do
+            totalPrice
         }
-        console.log(getCartDoc.id)
         await db.collection("orders").add(neworder)
         await db.collection("cart").doc(getCartDoc.id).delete()
         return res.status(201).json("Order created and cart cleared")
@@ -54,13 +85,27 @@ async function updateOrdertoCancel(req, res) {
             return res.status(403).json("Unauthorized")
         }
 
+        if (req.body === undefined){
+            return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
+        }
+
+        const checkStatus = await db.collection("orders").doc(id).get()
+        const checkStatusData = checkStatus.data()
+
+        if(checkStatusData === undefined){
+            return res.status(404).json(`Order with ID ${id} not found`)
+        }
+
+        if(checkStatusData.status !== "placed"){
+            return res.status(400).json(`Order with ID ${id} is already with status ${checkStatusData.status} and can't be cancelled`)
+        }
         const validationJoi = updateOrderValidationtoCancel(req.body)
 
         if (validationJoi.error) {
             return res.status(400).json(validationJoi.error)
         }
         
-        await db.collection("orders").doc(id).update({status : req.body.status})
+        // await db.collection("orders").doc(id).update({status : req.body.status})
         return res.json(`Order with ID ${id} cancelled`)
 
     }catch(error){
@@ -77,8 +122,22 @@ async function updateOrdertoPay(req, res) {
             return res.status(403).json("Unauthorized")
         }
 
-        const validationJoi = updateOrderValidationtoPay(req.body)
+        if (req.body === undefined){
+            return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
+        }
+        
+        const checkStatus = await db.collection("orders").doc(id).get()
+        const checkStatusData = checkStatus.data()
 
+        if(checkStatusData === undefined){
+            return res.status(404).json(`Order with ID ${id} not found`)
+        }
+
+        if(checkStatusData.status !== "placed"){
+            return res.status(400).json(`Order with ID ${id} is already with status ${checkStatusData.status} and can't be paid`)
+        }
+
+        const validationJoi = updateOrderValidationtoPay(req.body)
         if (validationJoi.error) {
             return res.status(400).json(validationJoi.error)
         }
