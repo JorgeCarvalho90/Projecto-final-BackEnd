@@ -51,10 +51,11 @@ async function createUser(req,res) {
 }
 
 async function loginUser(req,res) {
-    const generateToken = (userId, userRole) => {
+    const generateToken = (userId, userRole, userEmail) => {
         const payload = {
           userId: userId,
-          userRole: userRole
+          userRole: userRole,
+          userEmail: userEmail
         };
       
         return jwt.sign(payload, 'edit2025', { expiresIn: '5000h' });
@@ -73,6 +74,7 @@ async function loginUser(req,res) {
       const user = userDoc.docs[0].data();
       const userId = userDoc.docs[0].id;
       const userRole = user.role
+      const userEmail = user.email
       
       if (!password){
         return res.status(404).json({ message: 'Input password' })
@@ -82,7 +84,7 @@ async function loginUser(req,res) {
         return res.status(404).json({ message: 'Wrong password' })
       }
 
-      const token = generateToken(userId, userRole);
+      const token = generateToken(userId, userRole, userEmail);
   
       res.json({ token });
     } catch (error) {

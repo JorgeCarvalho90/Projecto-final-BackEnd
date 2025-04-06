@@ -1,5 +1,6 @@
 const db = require('../config/firebaseConfig')
 const Joi = require("joi")
+const { sendOrderConfirmation } = require('../config/mailer')
 
 async function getOrder(req,res) {
     try{
@@ -68,7 +69,22 @@ async function addOrder(req,res) {
             totalPrice
         }
         await db.collection("orders").add(neworder)
-        await db.collection("cart").doc(getCartDoc.id).delete()
+        // await db.collection("cart").doc(getCartDoc.id).delete()
+
+        // await sendOrderConfirmation(req.userEmail, {
+        //     shippingAddress: req.body.shippingAddress,
+        //     totalPrice,
+        //     status: "placed",
+        //     petFood: await Promise.all(petFoodItems.map(async item => {
+        //       const petFoodSnap = await db.collection("petfood").doc(item.petFoodId).get()
+        //       const petFoodData = petFoodSnap.data()
+        //       return {
+        //         name: petFoodData.name,
+        //         quantity: item.quantity,
+        //         price: petFoodData.price
+        //       }
+        //     }))
+        // });
         return res.status(201).json("Order created and cart cleared")
 
     }catch(error){
@@ -125,7 +141,7 @@ async function updateOrdertoPay(req, res) {
         if (req.body === undefined){
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
-        
+
         const checkStatus = await db.collection("orders").doc(id).get()
         const checkStatusData = checkStatus.data()
 

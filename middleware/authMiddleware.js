@@ -13,6 +13,7 @@ const decodeUserId = (req, res, next) => {
     }
     req.userId = decoded.userId;
     req.userRole = decoded.userRole;
+    req.userEmail = decoded.userEmail;
     
     next();
   });
