@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken')
 
 async function createUser(req,res) {
     try{
-        if (req.body === undefined){
+        if (!req.body || Object.keys(req.body).length === 0){
           return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
         const validationJoi = createUserValidation(req.body)

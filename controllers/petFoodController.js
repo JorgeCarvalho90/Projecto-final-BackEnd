@@ -7,7 +7,7 @@ async function addPetFood(req,res) {
             return res.status(403).json("Only admins can add new food")
         }
 
-        if (req.body === undefined){
+        if (!req.body || Object.keys(req.body).length === 0){
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
 
@@ -43,7 +43,7 @@ async function updatePetFood(req, res) {
             return res.status(403).json("Only admins can add new food")
         }
 
-        if (req.body === undefined){
+        if (!req.body || Object.keys(req.body).length === 0){
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
 

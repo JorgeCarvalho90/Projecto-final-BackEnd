@@ -9,7 +9,7 @@ async function addCart(req,res) {
             return res.status(400).json(`You already have a cart ongoing, please update it. ID: ${JSON.stringify(showcart)}`)
         }
 
-        if (req.body === undefined){
+        if (!req.body || Object.keys(req.body).length === 0){
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
 
@@ -63,7 +63,7 @@ async function updateCart(req, res) {
             return res.status(403).json("Unauthorized")
         }
 
-        if (req.body === undefined){
+        if (!req.body || Object.keys(req.body).length === 0){
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
         

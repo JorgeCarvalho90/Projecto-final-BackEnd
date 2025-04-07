@@ -27,7 +27,7 @@ async function addOrder(req,res) {
             return res.status(404).json("No cart found for your user")
         }
 
-        if (req.body === undefined){
+        if (!req.body || Object.keys(req.body).length === 0){
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
 
@@ -106,7 +106,7 @@ async function updateOrdertoCancel(req, res) {
             return res.status(403).json("Unauthorized")
         }
 
-        if (req.body === undefined){
+        if (!req.body || Object.keys(req.body).length === 0){
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
 
@@ -148,7 +148,7 @@ async function updateOrdertoCancel(req, res) {
 
         await db.collection("orders").doc(id).update({status : req.body.status})
 
-        return res.json(`Order with ID ${id} cancelled`)
+        return res.json(`Order with ID ${id} cancelled and stock has been added`)
 
     }catch(error){
         return res.status(400).json("Something went wrong, try again later")
@@ -164,7 +164,7 @@ async function updateOrdertoPay(req, res) {
             return res.status(403).json("Unauthorized")
         }
 
-        if (req.body === undefined){
+        if (!req.body || Object.keys(req.body).length === 0){
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
 
