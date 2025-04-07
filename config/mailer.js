@@ -1,6 +1,11 @@
 const nodemailer = require("nodemailer");
 
+require('dotenv').config()
+
 const transporter = nodemailer.createTransport({
+  host: "smtp.ethereal.email",
+  port: 587,
+  secure: false,
   service: "gmail", // ou outro serviço
   auth: {
     user: process.env.EMAIL_USER,
@@ -29,5 +34,6 @@ async function sendOrderConfirmation(to, orderDetails) {
 
   await transporter.sendMail(mailOptions);
 }
+
 
 module.exports = { sendOrderConfirmation };

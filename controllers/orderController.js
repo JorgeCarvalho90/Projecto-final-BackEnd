@@ -1,6 +1,7 @@
 const db = require('../config/firebaseConfig')
 const Joi = require("joi")
 const { sendOrderConfirmation } = require('../config/mailer')
+const { validateAddress } = require('../config/geocodingService')
 
 async function getOrder(req,res) {
     try{
@@ -30,6 +31,13 @@ async function addOrder(req,res) {
             return res.status(400).json("Body cannot be empty. Please send valid data to proceed.")
         }
 
+        const geoValidation = await validateAddress(req.body.shippingAddress)
+        if (!geoValidation.valid) {
+            return res.status(400).json(`Invalid address: ${geoValidation.message}`)
+        }
+
+        const formattedAddress = geoValidation.formattedAddress
+
         const getCartDoc = getCart.docs[0]
         const getCartData = getCartDoc.data()
         const petFoodItems = getCartData.petFood
@@ -40,7 +48,6 @@ async function addOrder(req,res) {
         for (const item of petFoodItems){
             const petFood = db.collection("petfood").doc(item.petFoodId)
             const getPetFood = await petFood.get()
-
             const getPetFoodData = getPetFood.data()
 
             if (getPetFoodData.stock < item.quantity) {
@@ -48,43 +55,41 @@ async function addOrder(req,res) {
             }
 
             totalPrice += item.quantity * getPetFoodData.price
-            console.log (totalPrice)
 
             updatedStocks.push({
                 petFood,
                 newStock: getPetFoodData.stock - item.quantity
             })
-
-            for (const item of updatedStocks) {
-                await item.petFood.update({ stock: item.newStock })
-            }
-
         }
+
+        for (const item of updatedStocks) {
+            await item.petFood.update({ stock: item.newStock })
+        }
+
         const neworder ={
             id_user: req.userId,
             petFood: getCartData.petFood,
-            shippingAddress: req.body.shippingAddress,
+            shippingAddress: formattedAddress,
             status: "placed",
             timestamp: new Date().toISOString(),
             totalPrice
         }
         await db.collection("orders").add(neworder)
-        // await db.collection("cart").doc(getCartDoc.id).delete()
-
-        // await sendOrderConfirmation(req.userEmail, {
-        //     shippingAddress: req.body.shippingAddress,
-        //     totalPrice,
-        //     status: "placed",
-        //     petFood: await Promise.all(petFoodItems.map(async item => {
-        //       const petFoodSnap = await db.collection("petfood").doc(item.petFoodId).get()
-        //       const petFoodData = petFoodSnap.data()
-        //       return {
-        //         name: petFoodData.name,
-        //         quantity: item.quantity,
-        //         price: petFoodData.price
-        //       }
-        //     }))
-        // });
+        await db.collection("cart").doc(getCartDoc.id).delete()
+        await sendOrderConfirmation(req.userEmail, {
+            shippingAddress: formattedAddress,
+            totalPrice,
+            status: "placed",
+            petFood: await Promise.all(petFoodItems.map(async item => {
+              const petFoodSnap = await db.collection("petfood").doc(item.petFoodId).get()
+              const petFoodData = petFoodSnap.data()
+              return {
+                name: petFoodData.name,
+                quantity: item.quantity,
+                price: petFoodData.price
+              }
+            }))
+        });
         return res.status(201).json("Order created and cart cleared")
 
     }catch(error){
@@ -121,7 +126,28 @@ async function updateOrdertoCancel(req, res) {
             return res.status(400).json(validationJoi.error)
         }
         
-        // await db.collection("orders").doc(id).update({status : req.body.status})
+        const checkStatusDatas = checkStatus.data()
+        const petFoodItems = checkStatusDatas.petFood
+        
+        const updatedStocks = []
+
+        for ( const item of petFoodItems){
+            const petFood = db.collection("petfood").doc(item.petFoodId)
+            const getPetFood = await petFood.get()
+            const getPetFoodData = getPetFood.data()
+
+            updatedStocks.push({
+                petFood,
+                newStock: getPetFoodData.stock + item.quantity
+            })
+        }
+
+        for (const item of updatedStocks) {
+            await item.petFood.update({ stock: item.newStock })
+        }
+
+        await db.collection("orders").doc(id).update({status : req.body.status})
+
         return res.json(`Order with ID ${id} cancelled`)
 
     }catch(error){
